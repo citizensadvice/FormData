@@ -222,16 +222,6 @@ window.File = new Proxy(NativeFile, {
         fd.append('foo', 'thumb')
         assert.deepEqual(fd.getAll('foo'), ['bar', 'thumb'])
       })
-
-      it('replaces if already present', () => {
-        var fd = new FormData()
-        fd.append('name', 'value')
-        fd.append('foo', 'bar')
-        fd.append('foe', 'fee')
-        fd.append('foo', 'bar')
-        fd.set('foo', 'fi')
-        assert.deepEqual([...fd], [['name', 'value'], ['foo', 'fi'], ['foe', 'fee']])
-      })
     })
 
     describe('filename', () => {
