@@ -1,12 +1,12 @@
 # FormData
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/jimmywarting/FormData.svg)](https://greenkeeper.io/)
+## This is a fork
 
-[![Build Status](https://travis-ci.org/jimmywarting/FormData.svg?branch=master)](https://travis-ci.org/jimmywarting/FormData)
+See https://github.com/jimmywarting/FormData
 
-[![npm version][npm-image]][npm-url]
+This fixes an issue where order of fields is not preserved.
 
-[![JavaScript Style Guide](https://img.shields.io/badge/code_style-standard-brightgreen.svg)](https://standardjs.com)
+## Original readme
 
 ```bash
 npm install formdata-polyfill
