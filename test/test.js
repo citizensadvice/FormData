@@ -1,4 +1,4 @@
-/* global it describe assert expect Blob FormData */
+/* global it describe assert expect Blob FormData XMLHttpRequest */
 
 const native = window.FormData
 window.FormData = undefined
@@ -19,15 +19,15 @@ window.File = new Proxy(NativeFile, {
 })
 
 ;[native, Polyfill].forEach(FormData => {
-  function createFormData(...args) {
+  function createFormData (...args) {
     const fd = new FormData()
-    for (let arg of args) {
+    for (const arg of args) {
       fd.append(...arg)
     }
     return fd
   }
 
-  function create_form(str) {
+  function createForm (str) {
     var form = document.createElement('form')
     form.innerHTML = str
     return new FormData(form)
@@ -47,7 +47,7 @@ window.File = new Proxy(NativeFile, {
 
       // #78
       it('testEmptyFileInput', () => {
-        const fd = create_form(`<input name=foo type=file>`)
+        const fd = createForm(`<input name=foo type=file>`)
         assert.equal(fd.has('foo'), true)
         assert.equal(fd.get('foo').type, 'application/octet-stream')
       })
@@ -174,25 +174,85 @@ window.File = new Proxy(NativeFile, {
       })
     })
 
+    describe('set', () => {
+      it('throws on 0 args', () => {
+        expect(() => {
+          var fd = new FormData()
+          fd.set()
+        }).throw()
+      })
+
+      it('throws on 1 arg', () => {
+        expect(() => {
+          var fd = new FormData()
+          fd.set('a')
+        }).throw()
+      })
+
+      it('appends if not already present', () => {
+        var fd = new FormData()
+        fd.append('name', 'value')
+        fd.set('foo', 'bar')
+        assert.deepEqual([...fd], [['name', 'value'], ['foo', 'bar']])
+      })
+
+      it('replaces if already present', () => {
+        var fd = new FormData()
+        fd.append('name', 'value')
+        fd.append('foo', 'bar')
+        fd.append('foe', 'fee')
+        fd.append('foo', 'bar')
+        fd.set('foo', 'fi')
+        assert.deepEqual([...fd], [['name', 'value'], ['foo', 'fi'], ['foe', 'fee']])
+      })
+    })
+
+    describe('getAll', () => {
+      it('throws on 0 args', () => {
+        expect(() => {
+          var fd = new FormData()
+          fd.getAll()
+        }).throw()
+      })
+
+      it('gets all args', () => {
+        var fd = new FormData()
+        fd.append('foo', 'bar')
+        fd.append('foe', 'fi')
+        fd.append('foo', 'thumb')
+        assert.deepEqual(fd.getAll('foo'), ['bar', 'thumb'])
+      })
+
+      it('replaces if already present', () => {
+        var fd = new FormData()
+        fd.append('name', 'value')
+        fd.append('foo', 'bar')
+        fd.append('foe', 'fee')
+        fd.append('foo', 'bar')
+        fd.set('foo', 'fi')
+        assert.deepEqual([...fd], [['name', 'value'], ['foo', 'fi'], ['foe', 'fee']])
+      })
+    })
+
     describe('filename', () => {
       // #43
       // Old ie don't have Symbol.toStringTag and the polyfill was
       // therefore not able to change the
       // `Object.prototype.toString.call` to return correct type of the polyfilled
       // File constructor
-      it('Shold return correct filename with File', () => {
+      it('Should return correct filename with File', () => {
         const fd = createFormData(['key', new NativeFile([], 'doc.txt')])
         const mockFile = fd.get('key')
         assert.equal('doc.txt', mockFile.name)
       })
 
-      it('Shold return correct filename with Blob filename', () => {
+      it('Should return correct filename with Blob filename', () => {
         const fd = createFormData(['key', new Blob(), 'doc.txt'])
         const mockFile = fd.get('key')
         assert.equal('doc.txt', mockFile.name)
       })
 
-      it('Shold return correct filename with just Blob', () => {
+      it('Should return correct filename with just Blob', () => {
         const fd = createFormData(['key', new Blob()])
         const mockFile = fd.get('key')
         assert.equal('blob', mockFile.name)
@@ -244,8 +304,8 @@ window.File = new Proxy(NativeFile, {
     })
 
     describe('disabled', () => {
-      it('Shold not include disabled fields', () => {
-        const fd = create_form(
+      it('Should not include disabled fields', () => {
+        const fd = createForm(
           `<input disabled name=foo value=bar>`
         )
         assert.deepEqual([...fd], [])
@@ -253,7 +313,7 @@ window.File = new Proxy(NativeFile, {
 
       // #56
       it('Select elements where the option is both selected and disabled should not be included', () => {
-        const fd = create_form(`
+        const fd = createForm(`
           <select multiple name="example">
             <option selected disabled value="foo">Please choose one</option>
           </select>
@@ -265,8 +325,8 @@ window.File = new Proxy(NativeFile, {
 
     describe('constructor', () => {
       // #45
-      it('Shold return selected items', () => {
-        const fd = create_form(`
+      it('Should return selected items', () => {
+        const fd = createForm(`
           <select multiple name="example">
             <option selected value="volvo">Volvo</option>
             <option selected value="saab">Saab</option>
@@ -280,13 +340,29 @@ window.File = new Proxy(NativeFile, {
 
       // #62
       it('Should not add buttons to FormData', () => {
-        const fd = create_form(`
+        const fd = createForm(`
           <input type="text" name="username" value="bob">
           <input type="submit" value="rename" name="action">
           <input type="submit" value="find_n_delete" name="action">
         `)
 
         assert.deepEqual([...fd], [['username', 'bob']])
+      })
+
+      it('Should return in order', () => {
+        const fd = createForm(`
+          <input type="text" name="person[][name]" value="bob">
+          <input type="text" name="person[][email]" value="bob@bob">
+          <input type="text" name="person[][name]" value="frank">
+          <input type="text" name="person[][email]" value="frank@frank">
+        `)
+
+        assert.deepEqual([...fd], [
+          ['person[][name]', 'bob'],
+          ['person[][email]', 'bob@bob'],
+          ['person[][name]', 'frank'],
+          ['person[][email]', 'frank@frank']
+        ])
       })
     })
 

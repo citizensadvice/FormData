@@ -121,7 +121,7 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      * @param {HTMLElement=} form
      */
     constructor (form) {
-      this._data = Object.create(null)
+      this._data = []
 
       if (!form) return this
 
@@ -162,11 +162,7 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
     append (name, value, filename) {
       ensureArgs(arguments, 2)
       ;[name, value, filename] = normalizeArgs.apply(null, arguments)
-      const map = this._data
-
-      if (!map[name]) map[name] = []
-
-      map[name].push([value, filename])
+      this._data.push([name, [value, filename]])
     }
 
     /**
@@ -177,7 +173,8 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      */
     delete (name) {
       ensureArgs(arguments, 1)
-      delete this._data[String(name)]
+      name = String(name)
+      this._data = this._data.filter(([n]) => n !== name)
     }
 
     /**
@@ -186,12 +183,8 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      * @return {Iterator}
      */
     * entries () {
-      const map = this._data
-
-      for (let name in map) {
-        for (let value of map[name]) {
-          yield [name, normalizeValue(value)]
-        }
+      for (const [name, value] of this._data) {
+        yield [name, normalizeValue(value)]
       }
     }
 
@@ -204,7 +197,7 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      */
     forEach (callback, thisArg) {
       ensureArgs(arguments, 1)
-      for (let [name, value] of this) {
+      for (const [name, value] of this) {
         callback.call(thisArg, value, name, this)
       }
     }
@@ -218,9 +211,13 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      */
     get (name) {
       ensureArgs(arguments, 1)
-      const map = this._data
       name = String(name)
-      return map[name] ? normalizeValue(map[name][0]) : null
+      for (const [n, value] of this) {
+        if (name === n) {
+          return value
+        }
+      }
+      return null
     }
 
     /**
@@ -231,7 +228,10 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      */
     getAll (name) {
       ensureArgs(arguments, 1)
-      return (this._data[String(name)] || []).map(normalizeValue)
+      name = String(name)
+      return this._data
+        .filter(([n, value]) => n === name)
+        .map(([, value]) => normalizeValue(value))
     }
 
     /**
@@ -242,7 +242,8 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      */
     has (name) {
       ensureArgs(arguments, 1)
-      return String(name) in this._data
+      name = String(name)
+      return this._data.some(([n]) => n === name)
     }
 
     /**
@@ -251,7 +252,7 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      * @return {Iterator}
      */
     * keys () {
-      for (let [name] of this) {
+      for (const [name] of this) {
         yield name
       }
     }
@@ -266,8 +267,24 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      */
     set (name, value, filename) {
       ensureArgs(arguments, 2)
-      const args = normalizeArgs.apply(null, arguments)
-      this._data[args[0]] = [[args[1], args[2]]]
+      ;[name, value, filename] = normalizeArgs.apply(null, arguments)
+
+      name = String(name)
+      let index
+      this._data = this._data.filter(([n], i) => {
+        if (n === name) {
+          if (index === undefined) {
+            index = i
+          }
+          return false
+        }
+        return true
+      })
+      this._data.splice(
+        index === undefined ? this._data.length : index,
+        0,
+        [name, [value, filename]]
+      )
     }
 
     /**
@@ -276,7 +293,7 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
      * @return {Iterator}
      */
     * values () {
-      for (let [, value] of this) {
+      for (const [, value] of this) {
         yield value
       }
     }
@@ -290,7 +307,7 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
     ['_asNative'] () {
       const fd = new _FormData()
 
-      for (let [name, value] of this) {
+      for (const [name, value] of this) {
         fd.append(name, value)
       }
 
@@ -306,7 +323,7 @@ if (typeof Blob === 'function' && (typeof FormData === 'undefined' || !FormData.
       const boundary = '----formdata-polyfill-' + Math.random()
       const chunks = []
 
-      for (let [name, value] of this) {
+      for (const [name, value] of this) {
         chunks.push(`--${boundary}\r\n`)
 
         if (value instanceof Blob) {

@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node build",
     "prepare": "npm run build && npm run test",
-    "test": "standard ./FormData.js && karma start --single-run --browsers ChromeHeadless karma.conf.js"
+    "lint": "standard",
+    "test": "standard && karma start --single-run --browsers ChromeHeadless karma.conf.js"
   },
   "repository": {
     "type": "git",
